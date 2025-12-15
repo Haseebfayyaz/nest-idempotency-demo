@@ -1,0 +1,31 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: orders-postgres
+    environment:
+      POSTGRES_DB: orders_db
+      POSTGRES_USER: orders
+      POSTGRES_PASSWORD: orders
+    # Bind to an alternate host port to avoid conflicts with a local Postgres
+    ports:
+      - '5433:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    container_name: orders-redis
+    ports:
+      - '6379:6379'
+
+  pulsar:
+    image: apachepulsar/pulsar:3.1.0
+    container_name: orders-pulsar
+    command: bin/pulsar standalone
+    ports:
+      - '6650:6650'
+      - '8080:8080'
+
+volumes:
+  pgdata:
+
