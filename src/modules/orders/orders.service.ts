@@ -85,22 +85,32 @@ export class OrdersService {
     if (!Number.isInteger(version) || version < 1) {
       throw new ConflictException('Version required');
     }
-    const order = await this.repo.findOneBy({ id, tenantId });
-    if (!order) throw new NotFoundException();
-    if (order.status !== OrderStatus.DRAFT) {
-      throw new ConflictException('Only draft orders can be confirmed');
-    }
-    if (order.version !== version)
-      throw new ConflictException('Version mismatch');
 
-    order.status = OrderStatus.CONFIRMED;
-    order.totalCents = dto.totalCents;
-    order.version++;
+    return this.dataSource.transaction(async (manager) => {
+      // Lock the row for update to prevent concurrent modifications
+      const order = await manager
+        .createQueryBuilder(Order, 'o')
+        .where('o.id = :id AND o.tenant_id = :tenantId', { id, tenantId })
+        .setLock('pessimistic_write')
+        .getOne();
 
-    await this.repo.save(order);
-    await this.publisher.publish('orders.confirmed', tenantId, order);
+      if (!order) throw new NotFoundException();
+      if (order.status !== OrderStatus.DRAFT) {
+        throw new ConflictException('Only draft orders can be confirmed');
+      }
+      if (order.version !== version) {
+        throw new ConflictException('Version mismatch');
+      }
 
-    return order;
+      order.status = OrderStatus.CONFIRMED;
+      order.totalCents = dto.totalCents;
+      order.version++;
+
+      const saved = await manager.save(order);
+      await this.publisher.publish('orders.confirmed', tenantId, saved);
+
+      return saved;
+    });
   }
 
   async close(id: string, tenantId: string) {
