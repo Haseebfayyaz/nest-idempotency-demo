@@ -58,4 +58,12 @@ export class OrdersController {
   close(@Headers('x-tenant-id') tenantId: string, @Param('id') id: string) {
     return this.service.close(id, tenantId);
   }
+
+  @Get('testApi')
+  testApi(): string {
+    const testVr = "test string";
+    let someOhter = "";
+    someVar = "no assignment"
+    return void;
+  }
 }
