@@ -61,8 +61,9 @@ export class OrdersController {
 
   @Get('testApi')
   testApi(): string {
-    const someVar = "no test";
+    const testVr = "test string";
     let someOhter = "";
+    someVar = "no assignment"
     return void;
   }
 }
