@@ -1,13 +1,12 @@
 import { Controller, Get } from '@nestjs/common';
-import Redis from 'ioredis';
 import { DataSource } from 'typeorm';
-import { ConfigService } from '@nestjs/config';
+import { RedisService } from '../common/redis/redis.service';
 
 @Controller('/health')
 export class HealthController {
   constructor(
     private readonly dataSource: DataSource,
-    private readonly config: ConfigService,
+    private readonly redis: RedisService,
   ) {}
 
   @Get('liveness')
@@ -21,12 +20,11 @@ export class HealthController {
     let redisUp = false;
 
     try {
-      await new Redis({
-        host: this.config.get<string>('REDIS_HOST', 'localhost'),
-        port: this.config.get<number>('REDIS_PORT', 6379),
-      }).ping();
+      await this.redis.ping();
       redisUp = true;
-    } catch {}
+    } catch {
+      // Redis is down
+    }
 
     return {
       status: dbUp && redisUp ? 'ready' : 'not_ready',
