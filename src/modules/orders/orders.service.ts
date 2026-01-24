@@ -8,34 +8,19 @@ import { DataSource, Repository } from 'typeorm';
 import { Order, OrderStatus } from './orders.entity';
 import { Outbox } from './outbox.entity';
 import { randomUUID, createHash } from 'crypto';
-import Redis from 'ioredis';
 import { PulsarPublisher } from '../../events/pulsar.publisher';
+import { RedisService } from '../../common/redis/redis.service';
 import { ConfirmOrderDto } from './dto/confirm-order.dto';
 import { ListOrdersDto } from './dto/list-orders.dto';
 
-type RedisSettings = { host: string; port: number; ttlSeconds: number };
-
 @Injectable()
 export class OrdersService {
-  private readonly redis: Redis;
-  private readonly redisTtlSeconds: number;
-
   constructor(
     @InjectRepository(Order) private readonly repo: Repository<Order>,
     private readonly dataSource: DataSource,
     private readonly publisher: PulsarPublisher,
-  ) {
-    const redisCfg: RedisSettings = {
-      host: process.env.REDIS_HOST ?? 'localhost',
-      port: Number(process.env.REDIS_PORT ?? 6379),
-      ttlSeconds: Number(process.env.REDIS_TTL_SECONDS ?? 3600),
-    };
-    this.redis = new Redis({
-      host: redisCfg.host,
-      port: redisCfg.port,
-    });
-    this.redisTtlSeconds = redisCfg.ttlSeconds;
-  }
+    private readonly redis: RedisService,
+  ) {}
 
   async createDraft(
     tenantId: string,
@@ -68,8 +53,6 @@ export class OrdersService {
     await this.redis.set(
       redisKey,
       JSON.stringify({ bodyHash, response: order }),
-      'EX',
-      this.redisTtlSeconds,
     );
     await this.publisher.publish('orders.created', tenantId, order);
 
